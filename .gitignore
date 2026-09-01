@@ -4,6 +4,7 @@ __pycache__/
 
 .env
 .env.*
+GUI_new.py
 
 smartface.db
 *.db
