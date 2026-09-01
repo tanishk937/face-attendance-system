@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartFace Attendance — Prototype</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121924;
+    --panel-2: #0e141d;
+    --border: #223042;
+    --accent: #38bdf8;
+    --accent-2: #22d3ee;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --text: #e6edf3;
+    --muted: #7f93a8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #10202c 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(18, 25, 36, 0.6);
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: 0.5px; }
+  header h1 span { color: var(--accent); }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 6px; box-shadow: 0 0 8px var(--green); }
+  nav { display: flex; gap: 6px; padding: 14px 20px 0; max-width: 900px; margin: 0 auto; }
+  nav button {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 10px 10px 0 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  nav button.active { color: var(--text); border-bottom-color: var(--panel-2); background: var(--panel-2); }
+  main { max-width: 900px; margin: 0 auto; padding: 20px; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { margin-top: 0; font-size: 15px; color: var(--accent-2); }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  input[type=text] {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text); font-size: 14px;
+  }
+  video, canvas.preview { width: 100%; border-radius: 12px; background: #000; }
+  .cam-wrap { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .cam-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .cam-overlay .frame {
+    width: 55%; aspect-ratio: 1; border: 2px solid var(--accent); border-radius: 16px;
+    box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);
+  }
+  .btn {
+    display: inline-block; padding: 10px 16px; border-radius: 8px; border: none;
+    background: var(--accent); color: #04121c; font-weight: 700; cursor: pointer; font-size: 13px;
+    margin-top: 12px; margin-right: 8px;
+  }
+  .btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .samples { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .samples img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  .result-panel { margin-top: 14px; padding: 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); }
+  .result-panel.ok { border-color: var(--green); }
+  .result-panel.warn { border-color: var(--amber); }
+  .result-panel.bad { border-color: var(--red); }
+  .result-panel .who { font-size: 18px; font-weight: 700; }
+  .result-panel .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; text-align: center; }
+  .stat .num { font-size: 26px; font-weight: 800; color: var(--accent-2); }
+  .stat .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--border); padding: 10px 16px;
+    border-radius: 10px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>SmartFace</span> Attendance <small style="color:var(--muted); font-weight:400;">— prototype</small></h1>
+  <div style="font-size:12px; color:var(--muted);"><span class="status-dot"></span>System Online</div>
+</header>
+
+<nav>
+  <button data-view="dashboard" class="active">Dashboard</button>
+  <button data-view="scan">Mark Attendance</button>
+  <button data-view="register">Register User</button>
+</nav>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <section id="view-dashboard" class="view active">
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="stat-users">–</div><div class="lbl">Users</div></div>
+      <div class="stat"><div class="num" id="stat-present">–</div><div class="lbl">Present Today</div></div>
+      <div class="stat"><div class="num" id="stat-absent">–</div><div class="lbl">Absent Today</div></div>
+    </div>
+    <div class="card">
+      <h2>Recent Attendance</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Dept</th><th>Date</th><th>Time</th><th>Score</th></tr></thead>
+        <tbody id="attendance-table"><tr><td colspan="5" class="hint">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Registered Users</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Dept</th><th>Registered</th><th>Last Attendance</th><th></th></tr></thead>
+        <tbody id="users-table"><tr><td colspan="5" class="hint">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SCAN / MARK ATTENDANCE -->
+  <section id="view-scan" class="view">
+    <div class="card">
+      <h2>Live Scanner</h2>
+      <div class="cam-wrap">
+        <video id="scan-video" autoplay playsinline muted></video>
+        <div class="cam-overlay"><div class="frame"></div></div>
+      </div>
+      <button class="btn" id="scan-start">Start Scanning</button>
+      <button class="btn secondary" id="scan-stop" disabled>Stop</button>
+      <p class="hint">Captures a frame every ~1.5s and checks it against registered faces.</p>
+      <div id="scan-result" class="result-panel" style="display:none;"></div>
+    </div>
+  </section>
+
+  <!-- REGISTER -->
+  <section id="view-register" class="view">
+    <div class="card">
+      <h2>Register New User</h2>
+      <label>Full Name</label>
+      <input type="text" id="reg-name" placeholder="e.g. Tanishk Patidar" />
+      <label>Department</label>
+      <input type="text" id="reg-dept" placeholder="e.g. Robotics & Automation" />
+
+      <label style="margin-top:16px;">Face Samples</label>
+      <div class="cam-wrap">
+        <video id="reg-video" autoplay playsinline muted></video>
+        <div class="cam-overlay"><div class="frame"></div></div>
+      </div>
+      <button class="btn" id="reg-capture">Capture Sample (<span id="reg-count">0</span>/5)</button>
+      <button class="btn secondary" id="reg-reset">Reset</button>
+      <div class="samples" id="reg-samples"></div>
+
+      <div style="margin-top:16px;">
+        <button class="btn" id="reg-submit" disabled>Submit Registration</button>
+      </div>
+      <div id="reg-result" class="result-panel" style="display:none;"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = ""; // same-origin
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// ---------- Navigation ----------
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("view-" + btn.dataset.view).classList.add("active");
+    if (btn.dataset.view === "dashboard") loadDashboard();
+  });
+});
+
+// ---------- Camera helper ----------
+async function startCamera(videoEl) {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "user" },
+    audio: false
+  });
+  videoEl.srcObject = stream;
+  return stream;
+}
+
+function captureFrame(videoEl) {
+  const canvas = document.createElement("canvas");
+  canvas.width = videoEl.videoWidth;
+  canvas.height = videoEl.videoHeight;
+  canvas.getContext("2d").drawImage(videoEl, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+
+// ---------- Dashboard ----------
+async function loadDashboard() {
+  const summary = await fetch(API + "/api/dashboard/summary").then(r => r.json());
+  document.getElementById("stat-users").textContent = summary.total_users;
+  document.getElementById("stat-present").textContent = summary.present_today;
+  document.getElementById("stat-absent").textContent = summary.absent_today;
+
+  const attendance = await fetch(API + "/api/attendance").then(r => r.json());
+  const aBody = document.getElementById("attendance-table");
+  aBody.innerHTML = attendance.length ? attendance.slice(0, 15).map(a => `
+    <tr><td>${a.name}</td><td>${a.department || "-"}</td><td>${a.date}</td><td>${a.time}</td><td>${a.match_score ?? "-"}</td></tr>
+  `).join("") : `<tr><td colspan="5" class="hint">No attendance records yet.</td></tr>`;
+
+  const users = await fetch(API + "/api/users").then(r => r.json());
+  const uBody = document.getElementById("users-table");
+  uBody.innerHTML = users.length ? users.map(u => `
+    <tr>
+      <td>${u.name}</td><td>${u.department || "-"}</td>
+      <td>${new Date(u.created_at).toLocaleDateString()}</td>
+      <td>${u.last_attendance || "Never"}</td>
+      <td><a href="#" onclick="deleteUser(${u.id}); return false;" style="color:var(--red); font-size:12px;">Delete</a></td>
+    </tr>
+  `).join("") : `<tr><td colspan="5" class="hint">No users registered yet.</td></tr>`;
+}
+
+async function deleteUser(id) {
+  if (!confirm("Delete this user and their face data?")) return;
+  await fetch(API + `/api/users/${id}`, { method: "DELETE" });
+  toast("User deleted");
+  loadDashboard();
+}
+
+// ---------- Register flow ----------
+let regSamples = [];
+const regVideo = document.getElementById("reg-video");
+startCamera(regVideo).catch(() => toast("Camera permission denied"));
+
+document.getElementById("reg-capture").addEventListener("click", () => {
+  if (regSamples.length >= 5) return;
+  const dataUrl = captureFrame(regVideo);
+  regSamples.push(dataUrl);
+  document.getElementById("reg-count").textContent = regSamples.length;
+  const img = document.createElement("img");
+  img.src = dataUrl;
+  document.getElementById("reg-samples").appendChild(img);
+  document.getElementById("reg-submit").disabled = regSamples.length < 1;
+});
+
+document.getElementById("reg-reset").addEventListener("click", () => {
+  regSamples = [];
+  document.getElementById("reg-count").textContent = 0;
+  document.getElementById("reg-samples").innerHTML = "";
+  document.getElementById("reg-submit").disabled = true;
+});
+
+document.getElementById("reg-submit").addEventListener("click", async () => {
+  const name = document.getElementById("reg-name").value.trim();
+  const dept = document.getElementById("reg-dept").value.trim();
+  if (!name) { toast("Enter a name first"); return; }
+  if (!regSamples.length) { toast("Capture at least one sample"); return; }
+
+  const resultEl = document.getElementById("reg-result");
+  resultEl.style.display = "block";
+  resultEl.className = "result-panel";
+  resultEl.textContent = "Registering…";
+
+  const res = await fetch(API + "/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, department: dept, images: regSamples })
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    resultEl.className = "result-panel ok";
+    resultEl.innerHTML = `<div class="who">✓ Registered ${data.name}</div><div class="meta">${data.samples_used}/${data.samples_submitted} samples used</div>`;
+    document.getElementById("reg-reset").click();
+    document.getElementById("reg-name").value = "";
+    document.getElementById("reg-dept").value = "";
+  } else {
+    resultEl.className = "result-panel bad";
+    resultEl.innerHTML = `<div class="who">✕ Registration failed</div><div class="meta">${data.detail}</div>`;
+  }
+});
+
+// ---------- Scan flow ----------
+const scanVideo = document.getElementById("scan-video");
+let scanInterval = null;
+
+document.getElementById("scan-start").addEventListener("click", async () => {
+  try { await startCamera(scanVideo); } catch { toast("Camera permission denied"); return; }
+  document.getElementById("scan-start").disabled = true;
+  document.getElementById("scan-stop").disabled = false;
+  scanInterval = setInterval(scanOnce, 1500);
+});
+
+document.getElementById("scan-stop").addEventListener("click", () => {
+  clearInterval(scanInterval);
+  document.getElementById("scan-start").disabled = false;
+  document.getElementById("scan-stop").disabled = true;
+});
+
+async function scanOnce() {
+  const dataUrl = captureFrame(scanVideo);
+  const res = await fetch(API + "/api/attendance/recognize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: dataUrl })
+  });
+  const data = await res.json();
+  const el = document.getElementById("scan-result");
+  el.style.display = "block";
+
+  if (data.status === "marked") {
+    el.className = "result-panel ok";
+    el.innerHTML = `<div class="who">✓ Attendance Marked — ${data.name}</div><div class="meta">${data.department || ""} · ${data.time} · match ${Math.round(data.match_score*100)}%</div>`;
+    toast(`Welcome, ${data.name}`);
+  } else if (data.status === "already_marked") {
+    el.className = "result-panel warn";
+    el.innerHTML = `<div class="who">${data.name} already marked today</div>`;
+  } else if (data.status === "multiple_faces") {
+    el.className = "result-panel warn";
+    el.innerHTML = `<div class="who">⚠ Multiple faces detected</div><div class="meta">Only one person at a time, please.</div>`;
+  } else if (data.status === "no_face") {
+    el.className = "result-panel";
+    el.innerHTML = `<div class="who">Scanning…</div>`;
+  } else {
+    el.className = "result-panel bad";
+    el.innerHTML = `<div class="who">⚠ Unknown person</div><div class="meta">Face detected but not recognized.</div>`;
+  }
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

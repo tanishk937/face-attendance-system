@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+
+.env
+.env.*
+
+smartface.db
+*.db
+
+.vscode/
+.idea/
+.DS_Store
